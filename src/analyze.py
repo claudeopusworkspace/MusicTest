@@ -1,6 +1,43 @@
 """
-Audio analysis and visualization — generates spectrograms, chromagrams,
-and waveform plots that Claude can interpret visually.
+Audio analysis and visualization for AI-assisted music composition.
+
+This module generates visual representations of audio that Claude can interpret
+by reading the output images. It provides two tiers of analysis:
+
+STANDARD ANALYSIS (full_analysis):
+    Run on every generated sample. Produces 7 images that together give a
+    comprehensive picture of the audio:
+
+    1. Mel Spectrogram     — Overall frequency content over time. Shows instrument
+                             timbre, harmonic structure, and energy distribution.
+    2. Chromagram          — Pitch class activity over time. Shows chord changes
+                             and harmonic movement as they happen.
+    3. Waveform            — Raw amplitude over time. Shows clipping, silence,
+                             stereo balance, and gross dynamic shape.
+    4. Pitch Histogram     — Total energy per pitch class (bar chart). The most
+                             reliable way to identify key — compare the top 3-4
+                             notes against known triads/scales.
+    5. RMS Energy          — Perceived loudness over time. Reveals rising/falling
+                             dynamics, energy buildups, and phrase-level structure.
+    6. Spectral Centroid   — Brightness (center frequency) over time. A rising
+                             centroid means the sound is getting brighter. Useful
+                             for detecting filter sweeps and timbral evolution.
+    7. Tempogram           — Tempo estimation over time with BPM readout. Gives
+                             a precise tempo number and shows whether it's steady.
+
+DIAGNOSTIC ANALYSIS (called individually when investigating a specific question):
+    - zoomed_spectrogram   — High time-resolution view of a short window. Use to
+                             investigate reverb tails, transient character, or
+                             artifacts. NOT included in full_analysis because a
+                             single zoomed window may not represent the whole sample.
+
+INTERPRETATION WORKFLOW:
+    1. Generate a sample with src.generate
+    2. Run full_analysis() to produce all 7 standard images
+    3. Read the images to assess the output
+    4. If a specific question remains (e.g. "is there reverb?"), use the
+       appropriate diagnostic function for a closer look
+    5. Use detect_key() and detect_tempo() for numeric confirmation
 """
 
 import numpy as np
@@ -180,6 +217,68 @@ def tempogram(path: str, output_path: str = None, sr: int = 44100,
     ax.axhline(tempo, color="white", linestyle="--", linewidth=1.5,
                label=f"Estimated: {tempo:.1f} BPM")
     ax.legend(loc="upper right", fontsize=10)
+    ax.set_title(title)
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=150, bbox_inches="tight")
+    plt.close()
+    return output_path
+
+
+def zoomed_spectrogram(path: str, center_time: float = None,
+                       window_seconds: float = 1.5, output_path: str = None,
+                       sr: int = 44100, title: str = None) -> str:
+    """
+    High time-resolution spectrogram of a short window.
+
+    DIAGNOSTIC TOOL — not part of the standard analysis suite. Use when
+    investigating a specific question about a localized moment in the audio,
+    such as:
+      - Reverb: look for gradual spectral decay after a transient
+      - Transient quality: sharp vs. soft attack
+      - Artifacts: clicks, pops, or glitches
+      - FX tails: delay repeats, phaser sweeps
+
+    Note: a single zoomed window may not be representative of the whole sample.
+    Choose center_time deliberately, or leave it as None to auto-select the
+    loudest transient.
+
+    Args:
+        path: Audio file path
+        center_time: Center of the zoom window in seconds. If None, auto-selects
+                     the time of the strongest onset (loudest transient).
+        window_seconds: Duration of the zoom window (default 1.5s)
+        output_path: Where to save the image
+        sr: Sample rate
+        title: Plot title
+    """
+    y, sr = load_audio(path, sr)
+    duration = len(y) / sr
+
+    if center_time is None:
+        onset_env = librosa.onset.onset_strength(y=y, sr=sr)
+        onset_times = librosa.times_like(onset_env, sr=sr)
+        center_time = onset_times[np.argmax(onset_env)]
+
+    start_time = max(0, center_time - window_seconds / 2)
+    end_time = min(duration, center_time + window_seconds / 2)
+    start_sample = int(start_time * sr)
+    end_sample = int(end_time * sr)
+    y_window = y[start_sample:end_sample]
+
+    if output_path is None:
+        output_path = str(Path(path).with_suffix(".zoomed_spectrogram.png"))
+    if title is None:
+        title = (f"Zoomed Spectrogram — {Path(path).stem} "
+                 f"[{start_time:.2f}s – {end_time:.2f}s]")
+
+    fig, ax = plt.subplots(figsize=(14, 5))
+    S = librosa.feature.melspectrogram(y=y_window, sr=sr, n_mels=128,
+                                       fmax=sr // 2, hop_length=128)
+    S_dB = librosa.power_to_db(S, ref=np.max)
+    img = librosa.display.specshow(S_dB, x_axis="time", y_axis="mel",
+                                   sr=sr, fmax=sr // 2, ax=ax,
+                                   hop_length=128)
+    fig.colorbar(img, ax=ax, format="%+2.0f dB")
     ax.set_title(title)
     plt.tight_layout()
     plt.savefig(output_path, dpi=150, bbox_inches="tight")
