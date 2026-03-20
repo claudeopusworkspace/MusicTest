@@ -20,5 +20,5 @@ A toolkit for composing music using Foundation-1 (text-to-sample AI model) combi
 - Run tests: `python -m pytest tests/`
 
 ## Conventions
-- All audio work uses 44100 Hz sample rate, 16-bit WAV unless otherwise specified
+- All audio work uses 44100 Hz sample rate (Foundation-1's native rate), WAV format unless otherwise specified
 - Tempo/key metadata should be preserved in filenames or sidecar JSON

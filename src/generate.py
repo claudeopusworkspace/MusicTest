@@ -5,28 +5,40 @@ Bypasses Gradio UI entirely — loads model, builds conditioning, generates audi
 
 import json
 import torch
-import torchaudio
+import numpy as np
+import soundfile as sf
 from pathlib import Path
-from stable_audio_tools import get_pretrained_model
+from stable_audio_tools.models.factory import create_model_from_config
+from stable_audio_tools.models.utils import load_ckpt_state_dict
 from stable_audio_tools.inference.generation import generate_diffusion_cond
 
 BEATS_PER_BAR = 4
-MODEL_ID = "RoyalCities/Foundation-1"
+DEFAULT_MODEL_DIR = Path(__file__).parent.parent / "models" / "Foundation-1"
 
 _model = None
 _model_config = None
 
 
-def load_model(model_id: str = MODEL_ID, device: str = "cuda"):
-    """Load Foundation-1 (or another model) and cache it."""
+def load_model(model_dir: str = None, device: str = "cuda"):
+    """Load Foundation-1 from local files and cache it."""
     global _model, _model_config
     if _model is not None:
         return _model, _model_config
-    model, config = get_pretrained_model(model_id)
+
+    model_dir = Path(model_dir) if model_dir else DEFAULT_MODEL_DIR
+    config_path = model_dir / "model_config.json"
+    weights_path = model_dir / "Foundation_1.safetensors"
+
+    with open(config_path) as f:
+        model_config = json.load(f)
+
+    model = create_model_from_config(model_config)
+    model.load_state_dict(load_ckpt_state_dict(str(weights_path)))
     model = model.to(device).eval().requires_grad_(False)
+
     _model = model
-    _model_config = config
-    return model, config
+    _model_config = model_config
+    return model, model_config
 
 
 def bars_bpm_to_seconds(bars: int, bpm: float) -> float:
@@ -34,8 +46,8 @@ def bars_bpm_to_seconds(bars: int, bpm: float) -> float:
     return (60.0 / bpm) * BEATS_PER_BAR * bars
 
 
-def bars_bpm_to_samples(bars: int, bpm: float, sample_rate: int = 48000) -> int:
-    """Convert bars + BPM to sample count, aligned to model requirements."""
+def bars_bpm_to_samples(bars: int, bpm: float, sample_rate: int = 44100) -> int:
+    """Convert bars + BPM to sample count."""
     seconds = bars_bpm_to_seconds(bars, bpm)
     return int(round(seconds * sample_rate))
 
@@ -59,15 +71,17 @@ def generate(prompt: str, bars: int = 4, bpm: int = 120,
         (audio_tensor, sample_rate) — tensor is [channels, samples], float32
     """
     model, config = load_model(device=device)
-    sample_rate = config.get("sample_rate", 48000)
+    sample_rate = config.get("sample_rate", 44100)
 
     duration_seconds = bars_bpm_to_seconds(bars, bpm)
     sample_count = bars_bpm_to_samples(bars, bpm, sample_rate)
 
-    # Align to model's min_input_length if present
-    if hasattr(model, "min_input_length") and model.min_input_length:
-        mil = model.min_input_length
-        sample_count = ((sample_count + mil - 1) // mil) * mil
+    # Align to pretransform downsampling ratio
+    downsampling_ratio = config.get("model", {}).get("pretransform", {}).get(
+        "config", {}).get("downsampling_ratio", 2048)
+    if sample_count % downsampling_ratio != 0:
+        sample_count = ((sample_count + downsampling_ratio - 1)
+                        // downsampling_ratio) * downsampling_ratio
 
     conditioning = [{
         "prompt": prompt,
@@ -101,7 +115,9 @@ def save_wav(audio: torch.Tensor, sample_rate: int, path: str):
     path.parent.mkdir(parents=True, exist_ok=True)
     # Clamp to prevent clipping artifacts
     audio = audio.clamp(-1.0, 1.0)
-    torchaudio.save(str(path), audio, sample_rate)
+    # Convert from [channels, samples] to [samples, channels] for soundfile
+    audio_np = audio.numpy().T
+    sf.write(str(path), audio_np, sample_rate)
     return path
 
 

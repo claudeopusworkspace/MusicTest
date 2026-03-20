@@ -12,13 +12,13 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 
 
-def load_audio(path: str, sr: int = 48000, mono: bool = True):
+def load_audio(path: str, sr: int = 44100, mono: bool = True):
     """Load audio file, return (samples, sample_rate)."""
     y, sr_actual = librosa.load(path, sr=sr, mono=mono)
     return y, sr_actual
 
 
-def spectrogram(path: str, output_path: str = None, sr: int = 48000,
+def spectrogram(path: str, output_path: str = None, sr: int = 44100,
                 title: str = None) -> str:
     """Generate a mel spectrogram image from an audio file."""
     y, sr = load_audio(path, sr)
@@ -40,7 +40,7 @@ def spectrogram(path: str, output_path: str = None, sr: int = 48000,
     return output_path
 
 
-def chromagram(path: str, output_path: str = None, sr: int = 48000,
+def chromagram(path: str, output_path: str = None, sr: int = 44100,
                title: str = None) -> str:
     """Generate a chromagram image showing pitch class distribution over time."""
     y, sr = load_audio(path, sr)
@@ -61,7 +61,7 @@ def chromagram(path: str, output_path: str = None, sr: int = 48000,
     return output_path
 
 
-def waveform(path: str, output_path: str = None, sr: int = 48000,
+def waveform(path: str, output_path: str = None, sr: int = 44100,
              title: str = None) -> str:
     """Generate a waveform plot."""
     y, sr = load_audio(path, sr)
@@ -83,7 +83,7 @@ def waveform(path: str, output_path: str = None, sr: int = 48000,
     return output_path
 
 
-def full_analysis(path: str, output_dir: str = None, sr: int = 48000) -> dict:
+def full_analysis(path: str, output_dir: str = None, sr: int = 44100) -> dict:
     """Generate all visualizations for an audio file. Returns dict of paths."""
     p = Path(path)
     if output_dir is None:
@@ -98,7 +98,7 @@ def full_analysis(path: str, output_dir: str = None, sr: int = 48000) -> dict:
     }
 
 
-def detect_key(path: str, sr: int = 48000) -> dict:
+def detect_key(path: str, sr: int = 44100) -> dict:
     """Estimate the musical key of an audio file."""
     y, sr = load_audio(path, sr)
     chroma = librosa.feature.chroma_cqt(y=y, sr=sr)
@@ -134,7 +134,7 @@ def detect_key(path: str, sr: int = 48000) -> dict:
     }
 
 
-def detect_tempo(path: str, sr: int = 48000) -> float:
+def detect_tempo(path: str, sr: int = 44100) -> float:
     """Estimate BPM of an audio file."""
     y, sr = load_audio(path, sr)
     tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
