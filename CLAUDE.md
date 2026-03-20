@@ -48,6 +48,61 @@ of 7 images, then read them to assess the output.
 4. If a specific question remains, use the diagnostic tool for a closer look
 5. Use `detect_key()` and `detect_tempo()` for numeric confirmation
 
+## Composition Workflow
+
+### 1. Generate Layers
+Each instrument is generated independently via Foundation-1 (`src.generate`).
+- Always specify key, bars, BPM in the prompt
+- Supported BPMs: 100, 110, 120, 128, 130, 140, 150
+- Generate 3-5 seeds per layer, analyze each, pick the best key/tempo match
+- Foundation-1 does NOT generate percussion — sequence drums from WAV samples
+
+### 2. Seed Audition
+Run `detect_key()` and `detect_tempo()` on each candidate. Score by:
+- Correct key (exact match > related key > wrong key)
+- Correct tempo (within ~2 BPM of target)
+
+### 3. Percussion
+Build drum patterns with `src.drums`. Create variation:
+- Sparse pattern (kick + light hat) for quiet sections
+- Building pattern (add snare, fuller hats)
+- Full pattern (ghost notes, busier hats)
+- Breathing pattern (minimal, spacious)
+
+### 4. Mix Sections
+Use `src.mixer` to combine layers at different volumes/pans per section.
+**Layer orchestration is critical for texture** — not every instrument should
+play in every section. A typical arc:
+
+| Section | Layers | Character |
+|---|---|---|
+| A1 (sparse) | Guitar + bass + light drums | Intimate opening |
+| A2 (building) | + piano, pad, fuller drums | Warming up |
+| B1 (full) | Melody guitar + piano + all | Peak energy |
+| A3 (breathing) | Guitar + bass + minimal drums | Exhale moment |
+| B2 (full) | Melody guitar + piano + all | Second peak |
+| A4 (resolution) | Full but settled | Warm close |
+
+This arc pattern (sparse → build → peak → breathe → peak → resolve) is a
+good starting point for most pieces. Adjust per song — the principle is that
+texture should breathe, not flatline.
+
+### 5. Arrange
+Use `src.arrange` to concatenate sections. Key rules:
+- **Use hard cuts (crossfade_seconds=0.0)** for beat-aligned sections.
+  Crossfades blend two harmonic contexts and sound worse than clean cuts.
+- **Don't use make_loopable()** — if sections loop cleanly individually,
+  concatenation at beat boundaries is already seamless.
+- Shared layers (bass, pad, drums) across sections provide continuity
+  that makes hard cuts between different melodic content feel natural.
+
+### 6. Analyze Final Mix
+Run `full_analysis()` on the exported arrangement. Check:
+- RMS energy shows the intended dynamic arc (not flatlined)
+- Pitch histogram confirms overall key
+- Chromagram shows section contrast (A vs B harmonic emphasis)
+- No clipping in waveform
+
 ## Conventions
 - All audio work uses 44100 Hz sample rate (Foundation-1's native rate), WAV format unless otherwise specified
 - Tempo/key metadata should be preserved in filenames or sidecar JSON
