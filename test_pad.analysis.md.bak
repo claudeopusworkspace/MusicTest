@@ -1,0 +1,33 @@
+# Blind Audio Analysis — test_pad
+
+**Method**: Visual analysis of mel spectrogram, chromagram, and waveform plot only. No audio playback or prior knowledge of the file's content.
+
+## Instrument / Sound Type
+The filename confirms this is a pad, and the analyses are consistent with that. The spectrogram shows rich, sustained harmonic content concentrated in the 512 Hz – 4096 Hz range with visible horizontal harmonic bands — characteristic of a synthesizer pad with multiple overtones. Very little energy above ~8 kHz gives it a warm, filtered character rather than a bright or airy one.
+
+## Key / Pitch Content
+From the chromagram, the most dominant pitch classes are:
+
+- **E** — strongest and most sustained (near 1.0 intensity in several sections)
+- **C** — consistently strong, especially in the second half
+- **G** — prominent in multiple sections (~3–5s, 10–13s)
+- **A** and **B** — appear periodically
+
+The notes C, E, G (C major triad) and A, C, E (A minor triad) are the most prevalent combinations. The overall tonal center is most likely **C major / A minor**. The chord progression appears to move through diatonic chords — something resembling Am → G → Em → C or a similar i–VII–v–III cycle in A minor, which is a very common cinematic/ambient pad progression.
+
+## Tempo / Rhythm
+The waveform shows clear rhythmic pulsing — this isn't a smooth, static pad. The amplitude swells and recedes in a regular pattern with prominent peaks spaced roughly 0.5 seconds apart, suggesting a tempo around **120 BPM** (if the pulses land on eighth notes) or possibly **60 BPM** (quarter notes). Chord changes occur approximately every 2–3 seconds (~1 bar at 120 BPM or ~2 bars at 60 BPM).
+
+## Dynamics
+- Peak amplitude hits ~0.6 (well below clipping — clean headroom)
+- Clear dynamic variation throughout — not compressed flat
+- The loudest section is around 6–8 seconds; a quieter dip occurs near 9–10 seconds
+- The overall envelope shows natural ebb and flow, suggesting either an LFO-modulated amplitude or deliberate volume automation
+
+## Effects / Processing
+- **Low-pass filtering** — the sharp spectral rolloff above ~4 kHz is the most obvious processing. This is what gives it the warm, muted character.
+- **Tremolo or rhythmic modulation** — the periodic amplitude pulsing visible in both the waveform and the spectrogram (brightening/dimming bands) strongly suggests an LFO on amplitude or filter cutoff, or possibly sidechain-style pumping.
+- **Minimal reverb** — the waveform transients are relatively clean without long tails between pulses, so if there's reverb it's short or mixed low.
+
+## Musical Character
+This reads as a warm, evolving, rhythmically-modulated synth pad — the kind used as harmonic foundation in ambient, cinematic, or lo-fi electronic music. It's not a static drone; the rhythmic movement and chord changes give it a sense of progression. The A minor tonality combined with the warm filtering gives it a melancholic, atmospheric quality. At ~15 seconds, it's a loop-length sample that could serve as a backing texture in a larger arrangement.
