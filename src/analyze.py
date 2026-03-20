@@ -47,6 +47,30 @@ import matplotlib
 matplotlib.use("Agg")  # Non-interactive backend
 import matplotlib.pyplot as plt
 from pathlib import Path
+from PIL import Image
+
+# Claude Code CLI crashes reading images over 2000px in either dimension.
+MAX_IMAGE_PIXELS = 1950
+
+
+def _enforce_image_limit(path: str):
+    """Downscale an image if either dimension exceeds MAX_IMAGE_PIXELS."""
+    img = Image.open(path)
+    w, h = img.size
+    if w <= MAX_IMAGE_PIXELS and h <= MAX_IMAGE_PIXELS:
+        return
+    scale = min(MAX_IMAGE_PIXELS / w, MAX_IMAGE_PIXELS / h)
+    new_size = (int(w * scale), int(h * scale))
+    img = img.resize(new_size, Image.LANCZOS)
+    img.save(path)
+
+
+def _save_fig(output_path: str, dpi: int = 150):
+    """Save current figure with tight layout and enforce pixel limits."""
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=dpi, bbox_inches="tight")
+    plt.close()
+    _enforce_image_limit(output_path)
 
 
 def load_audio(path: str, sr: int = 44100, mono: bool = True):
@@ -71,9 +95,7 @@ def spectrogram(path: str, output_path: str = None, sr: int = 44100,
                                    sr=sr, fmax=sr // 2, ax=ax)
     fig.colorbar(img, ax=ax, format="%+2.0f dB")
     ax.set_title(title)
-    plt.tight_layout()
-    plt.savefig(output_path, dpi=150, bbox_inches="tight")
-    plt.close()
+    _save_fig(output_path)
     return output_path
 
 
@@ -92,9 +114,7 @@ def chromagram(path: str, output_path: str = None, sr: int = 44100,
                                    sr=sr, ax=ax)
     fig.colorbar(img, ax=ax)
     ax.set_title(title)
-    plt.tight_layout()
-    plt.savefig(output_path, dpi=150, bbox_inches="tight")
-    plt.close()
+    _save_fig(output_path)
     return output_path
 
 
@@ -114,9 +134,7 @@ def waveform(path: str, output_path: str = None, sr: int = 44100,
     ax.set_ylabel("Amplitude")
     ax.set_title(title)
     ax.set_xlim(0, times[-1])
-    plt.tight_layout()
-    plt.savefig(output_path, dpi=150, bbox_inches="tight")
-    plt.close()
+    _save_fig(output_path)
     return output_path
 
 
@@ -143,9 +161,7 @@ def pitch_class_histogram(path: str, output_path: str = None, sr: int = 44100,
         bars[idx].set_color(["#F44336", "#FF9800", "#FFC107"][rank])
     ax.set_ylabel("Mean Energy")
     ax.set_title(title)
-    plt.tight_layout()
-    plt.savefig(output_path, dpi=150, bbox_inches="tight")
-    plt.close()
+    _save_fig(output_path)
     return output_path
 
 
@@ -168,9 +184,7 @@ def rms_energy(path: str, output_path: str = None, sr: int = 44100,
     ax.set_ylabel("RMS Energy")
     ax.set_title(title)
     ax.set_xlim(0, times[-1])
-    plt.tight_layout()
-    plt.savefig(output_path, dpi=150, bbox_inches="tight")
-    plt.close()
+    _save_fig(output_path)
     return output_path
 
 
@@ -193,9 +207,7 @@ def spectral_centroid(path: str, output_path: str = None, sr: int = 44100,
     ax.set_ylabel("Frequency (Hz)")
     ax.set_title(title)
     ax.set_xlim(0, times[-1])
-    plt.tight_layout()
-    plt.savefig(output_path, dpi=150, bbox_inches="tight")
-    plt.close()
+    _save_fig(output_path)
     return output_path
 
 
@@ -218,9 +230,7 @@ def tempogram(path: str, output_path: str = None, sr: int = 44100,
                label=f"Estimated: {tempo:.1f} BPM")
     ax.legend(loc="upper right", fontsize=10)
     ax.set_title(title)
-    plt.tight_layout()
-    plt.savefig(output_path, dpi=150, bbox_inches="tight")
-    plt.close()
+    _save_fig(output_path)
     return output_path
 
 
@@ -280,9 +290,7 @@ def zoomed_spectrogram(path: str, center_time: float = None,
                                    hop_length=128)
     fig.colorbar(img, ax=ax, format="%+2.0f dB")
     ax.set_title(title)
-    plt.tight_layout()
-    plt.savefig(output_path, dpi=150, bbox_inches="tight")
-    plt.close()
+    _save_fig(output_path)
     return output_path
 
 
