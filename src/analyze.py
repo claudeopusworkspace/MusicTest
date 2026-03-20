@@ -83,6 +83,110 @@ def waveform(path: str, output_path: str = None, sr: int = 44100,
     return output_path
 
 
+def pitch_class_histogram(path: str, output_path: str = None, sr: int = 44100,
+                          title: str = None) -> str:
+    """Bar chart of total energy per pitch class — makes key identification unambiguous."""
+    y, sr = load_audio(path, sr)
+    if output_path is None:
+        output_path = str(Path(path).with_suffix(".pitch_histogram.png"))
+    if title is None:
+        title = f"Pitch Class Energy — {Path(path).stem}"
+
+    chroma = librosa.feature.chroma_cqt(y=y, sr=sr)
+    chroma_energy = chroma.mean(axis=1)
+    note_names = ["C", "C#", "D", "D#", "E", "F",
+                  "F#", "G", "G#", "A", "A#", "B"]
+
+    fig, ax = plt.subplots(figsize=(10, 4))
+    bars = ax.bar(note_names, chroma_energy, color="#4CAF50", edgecolor="black",
+                  linewidth=0.5)
+    # Highlight the top 3 notes
+    sorted_idx = np.argsort(chroma_energy)[::-1]
+    for rank, idx in enumerate(sorted_idx[:3]):
+        bars[idx].set_color(["#F44336", "#FF9800", "#FFC107"][rank])
+    ax.set_ylabel("Mean Energy")
+    ax.set_title(title)
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=150, bbox_inches="tight")
+    plt.close()
+    return output_path
+
+
+def rms_energy(path: str, output_path: str = None, sr: int = 44100,
+               title: str = None) -> str:
+    """RMS energy envelope over time — shows loudness dynamics and rising/falling character."""
+    y, sr = load_audio(path, sr)
+    if output_path is None:
+        output_path = str(Path(path).with_suffix(".rms_energy.png"))
+    if title is None:
+        title = f"RMS Energy — {Path(path).stem}"
+
+    rms = librosa.feature.rms(y=y)[0]
+    times = librosa.times_like(rms, sr=sr)
+
+    fig, ax = plt.subplots(figsize=(14, 3))
+    ax.plot(times, rms, color="#E91E63", linewidth=1.2)
+    ax.fill_between(times, rms, alpha=0.3, color="#E91E63")
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel("RMS Energy")
+    ax.set_title(title)
+    ax.set_xlim(0, times[-1])
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=150, bbox_inches="tight")
+    plt.close()
+    return output_path
+
+
+def spectral_centroid(path: str, output_path: str = None, sr: int = 44100,
+                      title: str = None) -> str:
+    """Spectral centroid over time — tracks brightness/timbral evolution."""
+    y, sr = load_audio(path, sr)
+    if output_path is None:
+        output_path = str(Path(path).with_suffix(".spectral_centroid.png"))
+    if title is None:
+        title = f"Spectral Centroid — {Path(path).stem}"
+
+    cent = librosa.feature.spectral_centroid(y=y, sr=sr)[0]
+    times = librosa.times_like(cent, sr=sr)
+
+    fig, ax = plt.subplots(figsize=(14, 3))
+    ax.plot(times, cent, color="#9C27B0", linewidth=1.0)
+    ax.fill_between(times, cent, alpha=0.2, color="#9C27B0")
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel("Frequency (Hz)")
+    ax.set_title(title)
+    ax.set_xlim(0, times[-1])
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=150, bbox_inches="tight")
+    plt.close()
+    return output_path
+
+
+def tempogram(path: str, output_path: str = None, sr: int = 44100,
+              title: str = None) -> str:
+    """Tempogram showing tempo estimates over time — gives precise BPM reading."""
+    y, sr = load_audio(path, sr)
+    if output_path is None:
+        output_path = str(Path(path).with_suffix(".tempogram.png"))
+    if title is None:
+        title = f"Tempogram — {Path(path).stem}"
+
+    onset_env = librosa.onset.onset_strength(y=y, sr=sr)
+    tg = librosa.feature.tempogram(onset_envelope=onset_env, sr=sr)
+    tempo, _ = librosa.beat.beat_track(onset_envelope=onset_env, sr=sr)
+
+    fig, ax = plt.subplots(figsize=(14, 4))
+    librosa.display.specshow(tg, x_axis="time", y_axis="tempo", sr=sr, ax=ax)
+    ax.axhline(tempo, color="white", linestyle="--", linewidth=1.5,
+               label=f"Estimated: {tempo:.1f} BPM")
+    ax.legend(loc="upper right", fontsize=10)
+    ax.set_title(title)
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=150, bbox_inches="tight")
+    plt.close()
+    return output_path
+
+
 def full_analysis(path: str, output_dir: str = None, sr: int = 44100) -> dict:
     """Generate all visualizations for an audio file. Returns dict of paths."""
     p = Path(path)
@@ -95,6 +199,10 @@ def full_analysis(path: str, output_dir: str = None, sr: int = 44100) -> dict:
         "spectrogram": spectrogram(path, str(out / f"{stem}.spectrogram.png"), sr),
         "chromagram": chromagram(path, str(out / f"{stem}.chromagram.png"), sr),
         "waveform": waveform(path, str(out / f"{stem}.waveform.png"), sr),
+        "pitch_histogram": pitch_class_histogram(path, str(out / f"{stem}.pitch_histogram.png"), sr),
+        "rms_energy": rms_energy(path, str(out / f"{stem}.rms_energy.png"), sr),
+        "spectral_centroid": spectral_centroid(path, str(out / f"{stem}.spectral_centroid.png"), sr),
+        "tempogram": tempogram(path, str(out / f"{stem}.tempogram.png"), sr),
     }
 
 
