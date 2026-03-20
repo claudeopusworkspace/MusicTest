@@ -64,7 +64,7 @@ def spectrogram(path: str, output_path: str = None, sr: int = 44100,
     if title is None:
         title = f"Mel Spectrogram — {Path(path).stem}"
 
-    fig, ax = plt.subplots(figsize=(14, 5))
+    fig, ax = plt.subplots(figsize=(12, 5))
     S = librosa.feature.melspectrogram(y=y, sr=sr, n_mels=128, fmax=sr // 2)
     S_dB = librosa.power_to_db(S, ref=np.max)
     img = librosa.display.specshow(S_dB, x_axis="time", y_axis="mel",
@@ -86,7 +86,7 @@ def chromagram(path: str, output_path: str = None, sr: int = 44100,
     if title is None:
         title = f"Chromagram — {Path(path).stem}"
 
-    fig, ax = plt.subplots(figsize=(14, 4))
+    fig, ax = plt.subplots(figsize=(12, 4))
     chroma = librosa.feature.chroma_cqt(y=y, sr=sr)
     img = librosa.display.specshow(chroma, x_axis="time", y_axis="chroma",
                                    sr=sr, ax=ax)
@@ -107,7 +107,7 @@ def waveform(path: str, output_path: str = None, sr: int = 44100,
     if title is None:
         title = f"Waveform — {Path(path).stem}"
 
-    fig, ax = plt.subplots(figsize=(14, 3))
+    fig, ax = plt.subplots(figsize=(12, 3))
     times = np.arange(len(y)) / sr
     ax.plot(times, y, linewidth=0.3, color="#2196F3")
     ax.set_xlabel("Time (s)")
@@ -161,7 +161,7 @@ def rms_energy(path: str, output_path: str = None, sr: int = 44100,
     rms = librosa.feature.rms(y=y)[0]
     times = librosa.times_like(rms, sr=sr)
 
-    fig, ax = plt.subplots(figsize=(14, 3))
+    fig, ax = plt.subplots(figsize=(12, 3))
     ax.plot(times, rms, color="#E91E63", linewidth=1.2)
     ax.fill_between(times, rms, alpha=0.3, color="#E91E63")
     ax.set_xlabel("Time (s)")
@@ -186,7 +186,7 @@ def spectral_centroid(path: str, output_path: str = None, sr: int = 44100,
     cent = librosa.feature.spectral_centroid(y=y, sr=sr)[0]
     times = librosa.times_like(cent, sr=sr)
 
-    fig, ax = plt.subplots(figsize=(14, 3))
+    fig, ax = plt.subplots(figsize=(12, 3))
     ax.plot(times, cent, color="#9C27B0", linewidth=1.0)
     ax.fill_between(times, cent, alpha=0.2, color="#9C27B0")
     ax.set_xlabel("Time (s)")
@@ -212,7 +212,7 @@ def tempogram(path: str, output_path: str = None, sr: int = 44100,
     tg = librosa.feature.tempogram(onset_envelope=onset_env, sr=sr)
     tempo, _ = librosa.beat.beat_track(onset_envelope=onset_env, sr=sr)
 
-    fig, ax = plt.subplots(figsize=(14, 4))
+    fig, ax = plt.subplots(figsize=(12, 4))
     librosa.display.specshow(tg, x_axis="time", y_axis="tempo", sr=sr, ax=ax)
     ax.axhline(tempo, color="white", linestyle="--", linewidth=1.5,
                label=f"Estimated: {tempo:.1f} BPM")
@@ -271,7 +271,7 @@ def zoomed_spectrogram(path: str, center_time: float = None,
         title = (f"Zoomed Spectrogram — {Path(path).stem} "
                  f"[{start_time:.2f}s – {end_time:.2f}s]")
 
-    fig, ax = plt.subplots(figsize=(14, 5))
+    fig, ax = plt.subplots(figsize=(12, 5))
     S = librosa.feature.melspectrogram(y=y_window, sr=sr, n_mels=128,
                                        fmax=sr // 2, hop_length=128)
     S_dB = librosa.power_to_db(S, ref=np.max)
