@@ -1,0 +1,31 @@
+# External dependencies (cloned repos)
+RC-stable-audio-tools/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Model files (too large for git)
+models/
+*.safetensors
+*.ckpt
+
+# Generated audio
+generations/
+output/
+
+# Environment
+.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
