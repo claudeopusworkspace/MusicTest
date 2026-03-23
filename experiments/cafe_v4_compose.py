@@ -1,13 +1,18 @@
 """
-Café Day Theme v4 — Synth melody edition.
+Café Day Theme v4 — Synth melody replaces Foundation-1 guitar melodies.
 
-Replaces the independently-generated Foundation-1 melodies with a
-programmatic synth lead that has coherent A and B melodies derived
-from the same motivic material.
+Based on v3 reconstruction (cafe_v3_reconstruct.py) with one key change:
+the Foundation-1 guitar layers (guitar_a, guitar_b) are REPLACED by
+programmatic synth melodies. This solves the melody consistency problem
+where independently-generated guitar_a and guitar_b had disconnected
+melodic personalities.
 
-Keeps Foundation-1 layers for: guitar (now accompaniment), bass, pad.
-Keeps sequenced drums from sample packs.
-Adds: synth melody with related A/B phrases.
+Foundation-1 layers kept: bass, piano, pad (harmonic/textural accompaniment)
+Sequenced: drums (from café percussion samples)
+New: synth melody with coherent A/B phrases sharing motivic material
+
+Key: G major | BPM: 100 | 8 bars per section (19.2s) | 6 sections
+Structure: A1(sparse) → A2(build) → B1(full) → A3(breathe) → B2(full) → A4(resolve)
 """
 
 import sys
@@ -19,43 +24,55 @@ from pathlib import Path
 from src.synth import Synth, render_melody_to_bars
 from src.mixer import Mixer
 from src.arrange import arrange, export_arrangement
-from src.drums import load_sample, build_drum_track, beats_to_samples
 
 # === Constants ===
 SR = 44100
-BPM = 100  # Foundation-1 layers were generated at 100 BPM (19.2s = 8 bars)
+BPM = 100
 BARS = 8
-BEATS_PER_BAR = 4
-TOTAL_BEATS = BARS * BEATS_PER_BAR  # 32
-SECTION_SECONDS = (60.0 / BPM) * TOTAL_BEATS  # 14.77s
 
-GEN_DIR = "/workspace/MusicTest/generations"
-SAMPLES_DIR = "/workspace/MusicTest/samples/cafe_percussion"
-OUTPUT_DIR = "/workspace/MusicTest/output"
+GEN = "generations"
+SAMPLES = "samples/cafe_percussion"
+OUTPUT = "output"
 
-# === Synth Voice ===
+# === Layer paths ===
+# Foundation-1 generated layers (kept as accompaniment)
+BASS    = f"{GEN}/cafe_day_bass.wav"
+PIANO_A = f"{GEN}/cafe_day_piano.wav"       # seed s77
+PIANO_B = f"{GEN}/cafe_day_piano_b.wav"     # seed s22
+PAD     = f"{GEN}/cafe_day_pad.wav"
+
+# Pre-built drum variations (from café percussion samples)
+DRUMS_SPARSE    = f"{GEN}/cafe_drums_sparse.wav"
+DRUMS_BUILDING  = f"{GEN}/cafe_drums_building.wav"
+DRUMS_FULL      = f"{GEN}/cafe_drums_full.wav"
+DRUMS_BREATHING = f"{GEN}/cafe_drums_breathing.wav"
+
+
+# === Synth Melody Voice ===
+# Warm tone that blends with the Foundation-1 acoustic layers.
+# Moderate brightness to sit in the mix, not dominate it.
 lead_synth = Synth(
     waveform="warm",
     attack=0.04,
     decay=0.15,
-    sustain=0.6,
+    sustain=0.55,
     release=0.35,
     vibrato_rate=4.0,
-    vibrato_depth=0.15,
-    brightness=0.35,
+    vibrato_depth=0.12,
+    brightness=0.3,
     detune_cents=4.0,
 )
 
+
 # === Melody Composition ===
 # Key: G major (G A B C D E F#)
-# The A and B melodies share a core motif but develop it differently.
+# Core motif: G4 → B4 → A4 (rising third, step down)
+# A melody: develops motif into relaxed, descending phrases
+# B melody: develops motif upward with more rhythmic energy
+# Both resolve to G, maintaining coherence across sections.
 #
-# Core motif: G4 → B4 → A4 (a gentle rising third then step down)
-# A develops it into a relaxed, descending resolution
-# B develops it into an ascending, more energetic continuation
+# Beat values at 100 BPM: quarter note = 0.6s, half = 1.2s, whole = 2.4s
 
-# A melody: warm, relaxed, café feel (8 bars)
-# Phrases breathe — rests between them, stepwise resolution
 melody_a = [
     # Phrase 1 (bars 1-2): core motif → gentle descent
     ("G4",  1.0, 0.75), ("B4",  0.5, 0.7),  ("A4",  0.5, 0.65),
@@ -63,13 +80,13 @@ melody_a = [
     ("A4",  0.75, 0.7), ("G4",  0.75, 0.65), ("E4",  0.5, 0.6),
     ("R",   1.0, 0),
 
-    # Phrase 2 (bars 3-4): answer — rising, then settles
+    # Phrase 2 (bars 3-4): answering phrase — rises then settles
     ("D4",  0.5, 0.65), ("E4",  0.5, 0.7),  ("G4",  1.0, 0.75),
     ("A4",  0.5, 0.7),  ("B4",  1.0, 0.8),  ("A4",  0.5, 0.65),
     ("G4",  1.5, 0.75), ("R",   0.5, 0),
     ("R",   1.0, 0),
 
-    # Phrase 3 (bars 5-6): motif restated, slight variation
+    # Phrase 3 (bars 5-6): motif restated with upward reach
     ("G4",  0.5, 0.7),  ("B4",  1.0, 0.8),  ("A4",  0.5, 0.7),
     ("D5",  1.0, 0.85), ("B4",  0.5, 0.7),  ("A4",  0.5, 0.65),
     ("G4",  1.0, 0.75), ("R",   1.0, 0),
@@ -81,24 +98,22 @@ melody_a = [
     ("R",   2.0, 0),
 ]
 
-# B melody: more energy, higher register, same motif DNA
-# Uses the G→B→A motif but pushes it upward and adds rhythmic drive
 melody_b = [
-    # Phrase 1 (bars 1-2): motif in higher octave, more momentum
+    # Phrase 1 (bars 1-2): motif in higher register, more momentum
     ("B4",  0.5, 0.8),  ("D5",  0.5, 0.85), ("E5",  1.0, 0.9),
     ("D5",  0.5, 0.8),  ("B4",  0.5, 0.75),
     ("D5",  0.5, 0.8),  ("E5",  0.5, 0.85), ("G5",  1.0, 0.9),
     ("E5",  0.5, 0.8),  ("D5",  0.5, 0.75),
     ("R",   1.0, 0),
 
-    # Phrase 2 (bars 3-4): cascading descent (inversion of A's rise)
+    # Phrase 2 (bars 3-4): cascading descent back toward home
     ("G5",  0.5, 0.85), ("E5",  0.5, 0.8),  ("D5",  0.5, 0.8),
     ("B4",  1.0, 0.8),  ("A4",  0.5, 0.7),
     ("B4",  0.5, 0.75), ("D5",  1.0, 0.8),  ("B4",  0.5, 0.7),
     ("A4",  1.0, 0.7),
     ("R",   1.0, 0),
 
-    # Phrase 3 (bars 5-6): call-and-response with itself
+    # Phrase 3 (bars 5-6): call-and-response, building
     ("G4",  0.5, 0.7),  ("B4",  0.5, 0.8),  ("D5",  1.0, 0.85),
     ("R",   0.5, 0),
     ("A4",  0.5, 0.75), ("D5",  0.5, 0.8),  ("E5",  1.0, 0.9),
@@ -112,7 +127,7 @@ melody_b = [
     ("R",   1.5, 0),
 ]
 
-# Pad to exactly 32 beats each
+# Pad to exactly 32 beats
 def pad_to_beats(melody, target=32):
     total = sum(d for _, d, _ in melody)
     remaining = target - total
@@ -123,159 +138,115 @@ def pad_to_beats(melody, target=32):
 melody_a = pad_to_beats(melody_a)
 melody_b = pad_to_beats(melody_b)
 
-# Verify beat counts
 beats_a = sum(d for _, d, _ in melody_a)
 beats_b = sum(d for _, d, _ in melody_b)
-print(f"Melody A: {beats_a} beats")
-print(f"Melody B: {beats_b} beats")
+print(f"Melody A: {beats_a} beats | Melody B: {beats_b} beats")
 
 # === Render Melodies ===
 print("Rendering synth melodies...")
 audio_melody_a = render_melody_to_bars(melody_a, lead_synth, bpm=BPM, bars=BARS, sr=SR)
 audio_melody_b = render_melody_to_bars(melody_b, lead_synth, bpm=BPM, bars=BARS, sr=SR)
 
-# Save standalone melody WAVs for analysis
-Path(f"{OUTPUT_DIR}/cafe_v4_parts").mkdir(parents=True, exist_ok=True)
-sf.write(f"{OUTPUT_DIR}/cafe_v4_parts/melody_a.wav", audio_melody_a, SR)
-sf.write(f"{OUTPUT_DIR}/cafe_v4_parts/melody_b.wav", audio_melody_b, SR)
-print("  Melodies rendered.")
+# Save standalone melodies for reference
+Path(f"{OUTPUT}/cafe_v4_parts").mkdir(parents=True, exist_ok=True)
+sf.write(f"{OUTPUT}/cafe_v4_parts/melody_a.wav", audio_melody_a, SR)
+sf.write(f"{OUTPUT}/cafe_v4_parts/melody_b.wav", audio_melody_b, SR)
+print("  Done.")
 
-# === Drum Patterns ===
-# 4 variations for different section textures
-print("Building drum patterns...")
-kit = {
-    "kick": f"{SAMPLES_DIR}/soft_kick.wav",
-    "snare": f"{SAMPLES_DIR}/brush_snare.wav",
-    "hat": f"{SAMPLES_DIR}/soft_hihat.wav",
-}
-
-# 16th note grid per bar, 8 bars total = 128 steps
-def make_drum_pattern(kick_pat, snare_pat, hat_pat):
-    """Build drum track from 1-bar patterns repeated 8 times."""
-    return build_drum_track(
-        kit=kit,
-        patterns={
-            "kick": kick_pat * BARS,
-            "snare": snare_pat * BARS,
-            "hat": hat_pat * BARS,
-        },
-        bpm=BPM, total_bars=BARS, sr=SR
-    )
-
-# All patterns: 16 chars = 16th-note grid for one bar
-drums_sparse = make_drum_pattern(
-    "x...........x...",
-    "................",
-    "..-..-..-..-.-.-",
-)
-
-drums_building = make_drum_pattern(
-    "x.......x..x....",
-    "....x.......x...",
-    "x.-.x.-.x.-.x.-.",
-)
-
-drums_full = make_drum_pattern(
-    "x..x....x..x.x.",
-    "....x.......x.o.",
-    "x.x.x.x.x.x.x.",
-)
-
-drums_breathing = make_drum_pattern(
-    "x...............",
-    "................",
-    "...-........-.-.",
-)
-
-print("  Drums built.")
 
 # === Mix Sections ===
-# Foundation-1 layers (accompaniment — reduced volume since synth is lead)
+# Volume reference from v3 reconstruction (least-squares fit):
+#   guitar was 0.78-0.90 (lead voice)
+#   bass was 0.47-0.58
+#   piano was 0.41-0.58
+#   pad was 0.16-0.31
+#   drums were 0.32-0.53
+#
+# The synth melody REPLACES guitar — it takes guitar's role as lead voice
+# but at a lower volume since it's more present/synthetic than a generated guitar.
+# Guitar volume was ~0.84; synth melody should sit around 0.50-0.60 to blend.
+
 print("Mixing sections...")
 
-def mix_section(name, melody_audio, drums_audio,
-                use_guitar=True, use_piano=False, use_pad=False,
-                guitar_vol=0.5, piano_vol=0.4, pad_vol=0.35,
-                bass_vol=0.6, melody_vol=0.75, drums_vol=0.45):
-    """Mix a single section with the given layers."""
+def mix_section(layers_config):
+    """Mix a section from (name, audio_or_path, volume) tuples."""
     mixer = Mixer(sr=SR)
+    for name, audio, volume in layers_config:
+        mixer.add_track(name, audio, volume=volume, pan=0.0)
+    return mixer.mix(normalize=True, headroom_db=-1.0)
 
-    # Always include bass (foundation)
-    mixer.add_track("bass", f"{GEN_DIR}/cafe_day_bass.wav", volume=bass_vol, pan=0.0)
 
-    # Synth melody (lead)
-    mixer.add_track("melody", melody_audio, volume=melody_vol, pan=0.0)
+# S1: Sparse — melody + bass + sparse drums (intimate opening)
+section_1 = mix_section([
+    ("melody", audio_melody_a,  0.55),
+    ("bass",   BASS,            0.47),
+    ("drums",  DRUMS_SPARSE,    0.37),
+])
 
-    # Drums
-    mixer.add_track("drums", drums_audio, volume=drums_vol, pan=0.0)
+# S2: Building — add piano + pad + fuller drums
+section_2 = mix_section([
+    ("melody", audio_melody_a,  0.55),
+    ("bass",   BASS,            0.53),
+    ("piano",  PIANO_A,         0.41),
+    ("pad",    PAD,             0.16),
+    ("drums",  DRUMS_BUILDING,  0.47),
+])
 
-    # Optional layers
-    if use_guitar:
-        mixer.add_track("guitar", f"{GEN_DIR}/cafe_day_guitar.wav",
-                        volume=guitar_vol, pan=-0.2)
-    if use_piano:
-        mixer.add_track("piano", f"{GEN_DIR}/cafe_day_piano.wav",
-                        volume=piano_vol, pan=0.25)
-    if use_pad:
-        mixer.add_track("pad", f"{GEN_DIR}/cafe_day_pad.wav",
-                        volume=pad_vol, pan=0.0)
+# S3: B full — melody B + piano_b + pad + full drums (peak energy)
+section_3 = mix_section([
+    ("melody", audio_melody_b,  0.55),
+    ("bass",   BASS,            0.58),
+    ("piano",  PIANO_B,         0.58),
+    ("pad",    PAD,             0.26),
+    ("drums",  DRUMS_FULL,      0.53),
+])
 
-    mixed = mixer.mix(normalize=True, headroom_db=-1.0)
-    return mixed
+# S4: Breathing — melody A + bass only + minimal drums
+section_4 = mix_section([
+    ("melody", audio_melody_a,  0.50),
+    ("bass",   BASS,            0.53),
+    ("drums",  DRUMS_BREATHING, 0.32),
+])
 
-# Section structure:
-# A1 (sparse)   — melody A + guitar + bass + sparse drums
-# A2 (building) — melody A + guitar + piano + pad + bass + building drums
-# B1 (full)     — melody B + guitar + piano + pad + bass + full drums
-# A3 (breathe)  — melody A + bass + breathing drums (intimate moment)
-# B2 (full)     — melody B + guitar + piano + pad + bass + full drums
-# A4 (resolve)  — melody A + guitar + piano + pad + bass + building drums
+# S5: B full (repeat of S3 with slight pad increase)
+section_5 = mix_section([
+    ("melody", audio_melody_b,  0.55),
+    ("bass",   BASS,            0.58),
+    ("piano",  PIANO_B,         0.58),
+    ("pad",    PAD,             0.31),
+    ("drums",  DRUMS_FULL,      0.53),
+])
 
-section_a1 = mix_section("A1_sparse", audio_melody_a, drums_sparse,
-                          use_guitar=True, use_piano=False, use_pad=False,
-                          guitar_vol=0.45, melody_vol=0.7, drums_vol=0.35)
+# S6: Resolution — melody A + piano + pad + building drums (warm close)
+section_6 = mix_section([
+    ("melody", audio_melody_a,  0.55),
+    ("bass",   BASS,            0.58),
+    ("piano",  PIANO_A,         0.46),
+    ("pad",    PAD,             0.26),
+    ("drums",  DRUMS_BUILDING,  0.53),
+])
 
-section_a2 = mix_section("A2_building", audio_melody_a, drums_building,
-                          use_guitar=True, use_piano=True, use_pad=True,
-                          guitar_vol=0.4, piano_vol=0.35, pad_vol=0.3,
-                          melody_vol=0.7, drums_vol=0.4)
-
-section_b1 = mix_section("B1_full", audio_melody_b, drums_full,
-                          use_guitar=True, use_piano=True, use_pad=True,
-                          guitar_vol=0.4, piano_vol=0.35, pad_vol=0.3,
-                          melody_vol=0.75, drums_vol=0.45)
-
-section_a3 = mix_section("A3_breathe", audio_melody_a, drums_breathing,
-                          use_guitar=False, use_piano=False, use_pad=False,
-                          bass_vol=0.5, melody_vol=0.65, drums_vol=0.3)
-
-section_b2 = mix_section("B2_full", audio_melody_b, drums_full,
-                          use_guitar=True, use_piano=True, use_pad=True,
-                          guitar_vol=0.4, piano_vol=0.35, pad_vol=0.3,
-                          melody_vol=0.75, drums_vol=0.45)
-
-section_a4 = mix_section("A4_resolve", audio_melody_a, drums_building,
-                          use_guitar=True, use_piano=True, use_pad=True,
-                          guitar_vol=0.45, piano_vol=0.35, pad_vol=0.35,
-                          melody_vol=0.7, drums_vol=0.4)
-
-print("  All sections mixed.")
+print("  Done.")
 
 # === Arrange ===
-print("Arranging final piece...")
-sections = [section_a1, section_a2, section_b1, section_a3, section_b2, section_a4]
+print("Arranging...")
+sections = [section_1, section_2, section_3, section_4, section_5, section_6]
 full = arrange(sections, crossfade_seconds=0.0, sr=SR)
 
-output_path = f"{OUTPUT_DIR}/cafe_day_theme_v4.wav"
+output_path = f"{OUTPUT}/cafe_day_theme_v4.wav"
 export_arrangement(full, output_path, sr=SR, normalize=True, headroom_db=-1.0)
 
 duration = len(full) / SR
 print(f"\nExported: {output_path}")
 print(f"Duration: {duration:.1f}s ({duration/60:.1f} min)")
-print(f"Sections: A1→A2→B1→A3→B2→A4 (6 × {SECTION_SECONDS:.1f}s)")
+print(f"Structure: A1(sparse)→A2(build)→B1(full)→A3(breathe)→B2(full)→A4(resolve)")
 
 # === Analyze ===
 print("\nRunning analysis...")
-from src.analyze import full_analysis
-full_analysis(output_path, output_dir=f"{OUTPUT_DIR}/cafe_v4_analysis")
-print("Analysis complete.")
+import os
+os.makedirs(f"{OUTPUT}/cafe_v4_analysis", exist_ok=True)
+from src.analyze import full_analysis, detect_key
+full_analysis(output_path, output_dir=f"{OUTPUT}/cafe_v4_analysis")
+key = detect_key(output_path)
+print(f"Detected key: {key['full']} ({key['confidence']:.3f})")
+print("Done.")

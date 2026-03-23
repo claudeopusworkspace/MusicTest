@@ -103,6 +103,27 @@ Run `full_analysis()` on the exported arrangement. Check:
 - Chromagram shows section contrast (A vs B harmonic emphasis)
 - No clipping in waveform
 
+## Foundation-1 Limitations
+- **Cannot generate single notes** — always produces musical phrases/loops
+- **Cannot follow note-level instructions** — "play C4 D4 E4" in the prompt is ignored
+- Text encoder understands: instrument, key, style, tempo, mood — NOT specific note sequences
+- For note-level melodic control, use `src.synth` instead (programmatic synthesis)
+
+## Composition Scripts (MANDATORY)
+**Every composition must be saved as a reproducible Python script** in `experiments/`.
+Naming: `{song}_{version}_compose.py` (e.g., `cafe_v4_compose.py`).
+
+The script must be self-contained and include:
+- All layer paths and which generation seeds were selected
+- Exact volume, pan, and offset for every track in every section
+- Drum pattern definitions
+- Section structure (which layers play in which sections)
+- The arrange call with crossfade settings
+
+**Why:** Compositions done interactively are lost between sessions. Without a
+script, future sessions cannot understand, reproduce, or iterate on the mix.
+The script IS the source of truth for the composition — not the output WAV.
+
 ## Conventions
 - All audio work uses 44100 Hz sample rate (Foundation-1's native rate), WAV format unless otherwise specified
 - Tempo/key metadata should be preserved in filenames or sidecar JSON
